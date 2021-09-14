@@ -3,7 +3,7 @@ import os
 import subprocess
 #control on target machine
 
-
+#git commit stuff
 clientSock = socket.socket()
 host = '127.0.0.1' #127.0.0.1
 port = 9999
